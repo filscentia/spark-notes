@@ -1,16 +1,14 @@
-# Compiled class file
+# Java / Gradle build outputs
+.gradle/
+build/
+bin/
+out/
+target/
 *.class
 
-# Log file
-*.log
-
-# BlueJ files
+# Java temporary and packaging artifacts
 *.ctxt
-
-# Mobile Tools for Java (J2ME)
 .mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -18,7 +16,28 @@
 *.zip
 *.tar.gz
 *.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Logs and OS/editor files
+*.log
+.DS_Store
+.bob/
+
+# Spark/container runtime artifacts
+containers/.gradle/
+containers/_logs/
+containers/_metastore/
+containers/_warehouse/
+
+# Keep containers/_apps directory, ignore its contents
+containers/_apps/*
+!containers/_apps/.gitkeep
+
+# Ignore generated app artifacts in example projects
+hello_java_app/.gradle/
+hello_java_app/build/
+hello_java_app/bin/
+load_data_java_app/.gradle/
+load_data_java_app/build/
+load_data_java_app/bin/

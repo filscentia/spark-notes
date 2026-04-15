@@ -1,0 +1,20 @@
+{
+   "application_details":{  
+        "conf": { 
+            "spark.sql.defaultCatalog":"spark_catalog",
+            "spark.sql.catalog.spark_catalog.defaultDatabase":"vehicles",
+            "spark.app.name" : "$APP_NAME",
+            "spark.hadoop.wxd.apiKey":"Basic d2hpdGVtYXRAdWsuaWJtLmNvbTpsRGgtdXozN1BsZFlKbW9JX3F5dEc5UFZqVjhFbkl2bGJsQlVxRVBRNUJJcAo="
+        },
+        "class":"$APP_MAIN_CLASS",
+        "application": "$APP_JAR_S3",
+        "arguments":[        
+            "flexdata.table.alias.vehicles==vehicles_sm6_v4_2023",
+            "flexdata.table.alias.tests==tests_sm6_v4_2023",
+            "flexdata.sparksession.enablehive==true",
+            "flexdata.plan.dataref==RESOLVED",
+            "flexdata.sparksession.config=={\"spark.sql.warehouse.dir\":\"/opt/spark-warehouse\",\"javax.jdo.option.ConnectionURL\":\"jdbc:derby:;databaseName=/opt/spark-metastore/metastore_db;create=true\"}",
+            "flexdata.plan.b64==GswCEskCCvcBOvQBCgsSCQoHBwgJCgsMDRKSAQqPAQoCCgASfQoKdmVoaWNsZV9pZAoEbWFrZQoFbW9kZWwKBmNvbG91cgoJZnVlbF90eXBlChFjeWxpbmRlcl9jYXBhY2l0eQoOZmlyc3RfdXNlX2RhdGUSLAoEKgIQAgoEYgIQAQoEYgIQAQoEYgIQAQoEYgIQAQoEKgIQAgoEYgIQARgCOgoKCHZlaGljbGVzGggSBgoCEgAiABoKEggKBBICCAEiABoKEggKBBICCAIiABoKEggKBBICCAMiABoKEggKBBICCAQiABoKEggKBBICCAUiABoKEggKBBICCAYiABIKdmVoaWNsZV9pZBIEbWFrZRIFbW9kZWwSBmNvbG91chIJZnVlbF90eXBlEhFjeWxpbmRlcl9jYXBhY2l0eRIOZmlyc3RfdXNlX2RhdGUyCxBVKgdpc3RobXVz"            
+         ] 
+     }      
+}

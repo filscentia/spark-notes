@@ -1,0 +1,48 @@
+services:
+  spark:
+    image: spark:${SPARK_CONTAINER_IMAGE}
+    user: ":${MY_GID}"
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./_apps:/opt/spark-apps
+      - ./_data:/opt/spark-data
+      - ./_logs:/opt/spark/logs
+      - ./_warehouse:/opt/spark-warehouse
+      - ./_metastore:/opt/spark-metastore
+    command: >
+      bash -c "
+      mkdir -p /opt/spark/logs &&
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      "
+  spark-worker:
+    image: spark:${SPARK_CONTAINER_IMAGE}
+    user: ":${MY_GID}"
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    volumes:
+      - ./_apps:/opt/spark-apps
+      - ./_data:/opt/spark-data
+      - ./_logs:/opt/spark/logs
+      - ./_warehouse:/opt/spark-warehouse
+      - ./_metastore:/opt/spark-metastore
+    command: >
+      bash -c "
+      mkdir -p /opt/spark/logs &&
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark:7077
+      "

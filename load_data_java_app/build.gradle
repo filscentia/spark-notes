@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.filscentia.sparknotes'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+application {
+    mainClass = 'com.filscentia.sparknotes.LoadDataApp'
+}
+
+configurations {
+    bundled
+    compileOnly.extendsFrom bundled
+}
+
+dependencies {
+    bundled 'org.apache.spark:spark-sql_2.12:3.5.1'
+    testImplementation 'junit:junit:4.13.2'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.jar {
+    manifest {
+        attributes(
+            'Main-Class': application.mainClass.get()
+        )
+    }
+}
+
+tasks.register('fatJar', Jar) {
+    group = 'build'
+    description = 'Assembles a complete jar with application and bundled dependencies.'
+    archiveClassifier.set('all')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    zip64 true
+
+    manifest {
+        attributes(
+            'Main-Class': application.mainClass.get()
+        )
+    }
+
+    from sourceSets.main.output
+
+    dependsOn configurations.bundled
+    from {
+        configurations.bundled.collect { zipTree(it) }
+    }
+
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+}
+
+tasks.build {
+    dependsOn tasks.named('fatJar')
+}
