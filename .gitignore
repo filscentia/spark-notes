@@ -1,3 +1,5 @@
+.last_spark_version
+
 # Java / Gradle build outputs
 .gradle/
 build/

@@ -17,6 +17,7 @@ public final class HelloSpark {
 
  
         final SparkConf conf = new SparkConf()
+                 .setMaster("local[*]")
                 .setAppName("HelloWorldSpark");
 
         try (JavaSparkContext sc = new JavaSparkContext(conf)) {

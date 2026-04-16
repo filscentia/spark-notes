@@ -193,9 +193,9 @@ spark ver:
 
     export MY_UID=$(id -u)
     export MY_GID=$(id -g)
-    export SPARK_CONTAINER_IMAGE=${spark_container_images[{{ver}}]}
+    export SPARK_CONTAINER_IMAGE=${spark_container_images[$CURRENT_VERSION]}
 
-    docker compose up
+    cd ${CWDIR}/containers && docker compose up
 
 
 # Generates a spark-submit command from JSON application details
