@@ -1,0 +1,7 @@
+FROM apache/hive:4.0.0
+
+# Copy PostgreSQL JDBC driver
+USER root
+COPY postgresql-jdbc.jar /opt/hive/lib/postgresql-jdbc.jar
+
+USER hive

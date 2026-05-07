@@ -1,9 +1,4 @@
-from pathlib import Path
-
 from pyspark.sql import SparkSession
-
-WAREHOUSE_PATH = '/opt/spark-warehouse'
-METASTORE_PATH = '/opt/spark-metastore'
 
 
 def display_table_info(spark, table_name):
@@ -39,12 +34,11 @@ def main():
     print("=" * 60)
 
     spark = (
-        SparkSession.builder.appName("TableInfoViewer")
-        .config("spark.sql.warehouse.dir", WAREHOUSE_PATH)
-        .config(
-            'javax.jdo.option.ConnectionURL',
-            f'jdbc:derby:;databaseName={METASTORE_PATH}/metastore_db;create=true',
-        )
+        SparkSession.builder
+        .appName("TableInfoViewer")
+        .config("spark.sql.catalogImplementation", "hive")
+        .config("hive.metastore.uris", "thrift://hive-metastore:9083")
+        .config("spark.sql.warehouse.dir", "/opt/hive/data/warehouse")
         .enableHiveSupport()
         .getOrCreate()
     )
@@ -59,14 +53,12 @@ def main():
         if tables:
             for table in tables:
                 print(f"  - {table.tableName}")
+            
+            # Display information for all tables
+            for table in tables:
+                display_table_info(spark, table.tableName)
         else:
             print("  No tables found")
-        
-        # Display information for tests table
-        display_table_info(spark, "tests")
-        
-        # Display information for vehicles table
-        display_table_info(spark, "vehicles")
     
     except Exception as e:
         print(f"\n✗ Error: {e}")

@@ -1,4 +1,44 @@
+# https://spark.apache.org/docs/latest/spark-standalone.html
+
 services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=hive
+      - POSTGRES_PASSWORD=hive
+      - POSTGRES_DB=metastore
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive -d metastore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hive-metastore:
+    build:
+      context: .
+      dockerfile: Dockerfile.hive-metastore
+    image: hive-metastore:4.0.0-postgres
+    environment:
+      - SERVICE_NAME=metastore
+      - DB_DRIVER=postgres
+      - SERVICE_OPTS=-Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/metastore -Djavax.jdo.option.ConnectionUserName=hive -Djavax.jdo.option.ConnectionPassword=hive
+    ports:
+      - '9083:9083'
+    volumes:
+      - spark-warehouse:/opt/hive/data/warehouse
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -c "
+      /opt/hive/bin/schematool -dbType postgres -initSchema || true &&
+      /opt/hive/bin/hive --service metastore
+      "
+
   spark:
     image: spark:${SPARK_CONTAINER_IMAGE}
     user: ":${MY_GID}"
@@ -9,19 +49,25 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
+      - SPARK_MASTER_OPTS=-Dspark.master.rest.enabled=true -Dspark.sql.caseSensitive=false -Dspark.sql.catalogImplementation=hive -Dhive.metastore.uris=thrift://hive-metastore:9083 -Dspark.sql.warehouse.dir=/opt/spark-warehouse
     ports:
       - '8080:8080'
+      - '7077:7077'
+      - '6066:6066'
     volumes:
       - ./_apps:/opt/spark-apps
       - ./_data:/opt/spark-data
       - ./_logs:/opt/spark/logs
-      - ./_warehouse:/opt/spark-warehouse
+      - spark-warehouse:/opt/hive/data/warehouse
       - ./_metastore:/opt/spark-metastore
+    depends_on:
+      - hive-metastore
     command: >
-      bash -c "
+      bash -c "env &&
       mkdir -p /opt/spark/logs &&
       /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
       "
+
   spark-worker:
     image: spark:${SPARK_CONTAINER_IMAGE}
     user: ":${MY_GID}"
@@ -29,20 +75,31 @@ services:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark:7077
       - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_DIR=/opt/spark/logs
+      - SPARK_WORKER_OPTS=-Dspark.sql.caseSensitive=false -Dspark.sql.catalogImplementation=hive -Dhive.metastore.uris=thrift://hive-metastore:9083 -Dspark.sql.warehouse.dir=/opt/spark-warehouse
       - SPARK_WORKER_CORES=2
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
+    ports:
+      - '8081:8081'
     volumes:
       - ./_apps:/opt/spark-apps
       - ./_data:/opt/spark-data
       - ./_logs:/opt/spark/logs
-      - ./_warehouse:/opt/spark-warehouse
+      - spark-warehouse:/opt/hive/data/warehouse
       - ./_metastore:/opt/spark-metastore
+    depends_on:
+      - spark
+      - hive-metastore
     command: >
       bash -c "
       mkdir -p /opt/spark/logs &&
       /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark:7077
       "
+
+volumes:
+  postgres-data:
+  spark-warehouse:

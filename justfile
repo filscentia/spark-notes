@@ -46,12 +46,14 @@ java-app:
 load-data:
     #!/bin/bash
     set -e -o pipefail
+    cp ${CWDIR}/load_data_python_app/load_parquet_tables.py ${CWDIR}/containers/_apps
     docker exec -it ${SPARK_MASTER_CONTAINER} bash -c "/opt/spark/bin/spark-submit --master spark://${SPARK_MASTER_CONTAINER}:7077 --driver-memory 1G --executor-memory 1G /opt/spark-apps/load_parquet_tables.py 2>/dev/null"
 
 # Displays information about existing Spark tables
 show-table-info:
     #!/bin/bash
     set -e -o pipefail
+     cp ${CWDIR}/show_tables_python_app/show_table_info.py ${CWDIR}/containers/_apps
     docker exec -it ${SPARK_MASTER_CONTAINER} bash -c "/opt/spark/bin/spark-submit --master spark://${SPARK_MASTER_CONTAINER}:7077 --driver-memory 1G --executor-memory 1G /opt/spark-apps/show_table_info.py 2>/dev/null"
 
 hello:
@@ -59,13 +61,18 @@ hello:
     set -e -o pipefail
     docker exec -it ${SPARK_MASTER_CONTAINER} bash -c "/opt/spark/bin/spark-submit --master spark://${SPARK_MASTER_CONTAINER}:7077  --driver-memory 1G --executor-memory 1G /opt/spark-apps/hello_spark.py "
 
-# Cleans up metastore and warehouse contents while preserving directories
-clean-spark-data:
+
+sql-shell:
     #!/bin/bash
     set -e -o pipefail
-    echo "Cleaning Spark metastore and warehouse..."
-    sudo rm -rf ${CWDIR}/_metastore/*
-    sudo rm -rf ${CWDIR}/_warehouse/*
+    docker exec -it ${SPARK_MASTER_CONTAINER} bash -c "/opt/spark/bin/spark-sql --conf spark.sql.catalogImplementation=hive --conf hive.metastore.uris=thrift://hive-metastore:9083"
+
+python-shell:
+    #!/bin/bash
+    set -e -o pipefail
+    docker exec -it ${SPARK_MASTER_CONTAINER} bash -c "/opt/spark/bin/pyspark --conf spark.sql.catalogImplementation=hive --conf hive.metastore.uris=thrift://hive-metastore:9083"
+
+
 
 
 # Executes a Spark application using JSON configuration
@@ -171,31 +178,12 @@ spark ver:
         exit 1
     fi
 
-    # Track last Spark version used
-    LAST_VERSION_FILE="${CWDIR}/.last_spark_version"
-
-    if [ -f "$LAST_VERSION_FILE" ]; then
-        LAST_VERSION=$(cat "$LAST_VERSION_FILE")
-        if [ "$LAST_VERSION" != "$CURRENT_VERSION" ]; then
-            echo ""
-            echo "╔═══════════════════════════════════════════════════════════════════╗"
-            echo "║  ⚠️  WARNING: Spark version changed from $LAST_VERSION to $CURRENT_VERSION           ║"
-            echo "║  Metastore/warehouse may need cleanup for compatibility.          ║"
-            echo "║  Consider running: just clean-spark-data                          ║"
-            echo "╚═══════════════════════════════════════════════════════════════════╝"
-            echo ""
-            read -p "Press Enter to continue or Ctrl+C to abort..."
-        fi
-    fi
-
-    # Record current version
-    echo "$CURRENT_VERSION" > "$LAST_VERSION_FILE"
 
     export MY_UID=$(id -u)
     export MY_GID=$(id -g)
     export SPARK_CONTAINER_IMAGE=${spark_container_images[$CURRENT_VERSION]}
 
-    cd ${CWDIR}/containers && docker compose up
+    cd ${CWDIR}/containers && docker compose down --volumes && docker compose up
 
 
 # Generates a spark-submit command from JSON application details

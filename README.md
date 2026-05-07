@@ -8,18 +8,30 @@ A development environment for Apache Spark with Docker, supporting multiple Spar
 - [just](https://github.com/casey/just#installation) command runner
 - `jq` (for JSON-based application execution)
 
+## Architecture
+
+This project uses a centralized **Hive Metastore** backed by PostgreSQL to enable table sharing across all Spark applications. All applications connect to the same metastore service, allowing tables created by one application to be immediately accessible to others.
+
+**Components:**
+- **PostgreSQL** - Stores Hive metadata (table definitions, schemas, locations)
+- **Hive Metastore** - Thrift service (port 9083) that manages table metadata
+- **Spark Master/Worker** - Connect to metastore for unified table catalog
+- **Applications** - Automatically configured to use shared metastore
+
 ## Quick Start
 
 ```bash
-# Start Spark 3.5 cluster
+# Start Spark 3.5 cluster (includes Hive Metastore)
 just spark 3.5
 
-# Load sample data
+# Load sample data (creates tables in shared metastore)
 just load-data
 
-# Show table information
+# Show table information (reads from shared metastore)
 just show-table-info
 ```
+
+**Note:** All applications automatically connect to the centralized Hive Metastore. Tables created by any application are immediately visible to all other applications.
 
 ## Spark Version Management
 
@@ -46,13 +58,14 @@ just spark 4.0.2
 
 ### Cleaning Data Between Versions
 
-When switching between Spark versions, clean the metastore and warehouse to avoid compatibility issues:
+When switching between Spark versions, clean the warehouse and restart services to avoid compatibility issues:
 
 ```bash
 just clean-spark-data
+docker-compose -f containers/docker-compose.yaml down -v
 ```
 
-This removes all data from `_metastore/` and `_warehouse/` directories while preserving the directory structure.
+This removes all data from `_warehouse/` directory and the PostgreSQL volume containing the Hive metadata.
 
 ## Building Applications
 
@@ -147,6 +160,13 @@ just
 - `just show-table-info` - Display information about existing tables
 - `just java-app` - Run Java application (legacy)
 
+### Interactive Shells
+
+- `just sql-shell` - Start Spark SQL shell (with Hive Metastore access)
+- `just python-shell` - Start PySpark shell (with Hive Metastore access)
+
+Both shells are automatically configured to access the shared Hive Metastore, allowing you to query tables created by any application.
+
 ### JSON-Based Execution
 
 - `just spark-submit-from-json <json> [name] [class] [jar]` - Generate spark-submit command
@@ -180,3 +200,5 @@ just
 - Build Java apps before running them with `just build-java-app`
 - Check `just` (no arguments) to see all available commands
 - Use JSON configs for complex application configurations with multiple parameters
+
+tpchgen-cli -s1 --format=parquet

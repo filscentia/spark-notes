@@ -9,6 +9,7 @@ version = '1.0.0'
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 java {
@@ -23,10 +24,9 @@ application {
 
 
 dependencies {
-    //   compileOnly libs.spark35.sql
-    //   implementation libs.substrait.spark35
-    implementation "org.apache.spark:spark-sql_2.13:4.0.2"
-
+    implementation 'io.substrait:spark40_2.13:0.89.2'
+    
+    implementation "io.substrait:core:0.89.2"
     testImplementation 'junit:junit:4.13.2'
 }
 
@@ -42,29 +42,9 @@ tasks.jar {
     }
 }
 
-tasks.register('fatJar', Jar) {
-    group = 'build'
-    description = 'Assembles a complete jar with application and bundled dependencies.'
-    archiveClassifier.set('all')
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    zip64 true
-
-    manifest {
-        attributes(
-            'Main-Class': application.mainClass.get()
-        )
-    }
-
-    from sourceSets.main.output
-
-    dependsOn configurations.bundled
-    from {
-        configurations.bundled.collect { zipTree(it) }
-    }
-
-    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
-}
-
-tasks.build {
-    dependsOn tasks.named('fatJar')
+shadowJar {
+  zip64 = true
+  archiveBaseName = 'hello-java-app'
+  mergeServiceFiles()
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

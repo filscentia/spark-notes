@@ -1,10 +1,5 @@
-from pathlib import Path
-
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, when, isnan
-
-WAREHOUSE_PATH = '/opt/spark-warehouse'
-METASTORE_PATH = '/opt/spark-metastore'
 
 
 def display_table_info(spark, df, table_name):
@@ -27,21 +22,17 @@ def display_table_info(spark, df, table_name):
     
 
 def main():
-    # Initialize Spark Session
+    # Initialize Spark Session with Hive Metastore support
     print("\n" + "=" * 60)
     print("LOADING PARQUET FILES INTO SPARK TABLES")
     print("=" * 60)
-    
-    Path(WAREHOUSE_PATH).mkdir(parents=True, exist_ok=True)
-    Path(METASTORE_PATH).mkdir(parents=True, exist_ok=True)
 
     spark = (
-        SparkSession.builder.appName("ParquetTablesLoader")
-        .config("spark.sql.warehouse.dir", WAREHOUSE_PATH)
-        .config(
-            'javax.jdo.option.ConnectionURL',
-            f'jdbc:derby:;databaseName={METASTORE_PATH}/metastore_db;create=true',
-        )
+        SparkSession.builder
+        .appName("ParquetTablesLoader")
+        .config("spark.sql.catalogImplementation", "hive")
+        .config("hive.metastore.uris", "thrift://hive-metastore:9083")
+        .config("spark.sql.warehouse.dir", "/opt/hive/data/warehouse")
         .enableHiveSupport()
         .getOrCreate()
     )
@@ -49,33 +40,52 @@ def main():
     # Silence Spark framework logs
     spark.sparkContext.setLogLevel("ERROR")
     
-    # File paths (mounted in Docker container)
-    tests_path = "/opt/spark-data/tests_subset_v3_2023.parquet"
-    vehicles_path = "/opt/spark-data/vehicles_subset_v3_2023.parquet"
+    # All tables to load (original + TPC-H)
+    all_tables = {
+        # Original tables
+        'tests': '/opt/spark-data/tests_subset_v3_2023.parquet',
+        'vehicles': '/opt/spark-data/vehicles_subset_v3_2023.parquet',
+        # TPC-H tables
+        'customer': '/opt/spark-data/customer.parquet',
+        'lineitem': '/opt/spark-data/lineitem.parquet',
+        'nation': '/opt/spark-data/nation.parquet',
+        'orders': '/opt/spark-data/orders.parquet',
+        'part': '/opt/spark-data/part.parquet',
+        'partsupp': '/opt/spark-data/partsupp.parquet',
+        'region': '/opt/spark-data/region.parquet',
+        'supplier': '/opt/spark-data/supplier.parquet',
+    }
     
     try:
         # Drop existing tables if present
         print("\nChecking for existing tables...")
-        spark.sql("DROP TABLE IF EXISTS tests")
-        spark.sql("DROP TABLE IF EXISTS vehicles")
+        for table_name in all_tables.keys():
+            spark.sql(f"DROP TABLE IF EXISTS {table_name} PURGE")
         print("✓ Existing tables removed (if any)")
         
-        # Load tests parquet file
-        print(f"\nLoading: tests_subset_v3_2023.parquet")
-        tests_df = spark.read.parquet(tests_path)
-        tests_df.write.mode("overwrite").saveAsTable("tests")
-        print("✓ Successfully loaded and registered as permanent 'tests' table")
+        # Load each table
+        for table_name, parquet_path in all_tables.items():
+            print(f"\nLoading: {table_name}")
+            df = spark.read.parquet(parquet_path)
+            df.write.format("parquet").mode("overwrite").saveAsTable(table_name)
+            print(f"✓ Successfully loaded and registered as permanent '{table_name}' table")
+            
+            # Display information for the table - read from the actual table, not the DataFrame
+            table_df = spark.table(table_name)
+            display_table_info(spark, table_df, table_name)
         
-        # Load vehicles parquet file
-        print(f"\nLoading: vehicles_subset_v3_2023.parquet")
-        vehicles_df = spark.read.parquet(vehicles_path)
-        vehicles_df.write.mode("overwrite").saveAsTable("vehicles")
-        print("✓ Successfully loaded and registered as permanent 'vehicles' table")
-        
-        # Display information for both tables
-        tests_count = display_table_info(spark, tests_df, "tests")
-        vehicles_count = display_table_info(spark, vehicles_df, "vehicles")
-        
+        # Summary
+        print("\n" + "=" * 60)
+        print("SUMMARY")
+        print("=" * 60)
+        print(f"Successfully loaded {len(all_tables)} tables:")
+        print("\nOriginal tables:")
+        print("  - tests")
+        print("  - vehicles")
+        print("\nTPC-H tables:")
+        for table_name in ['customer', 'lineitem', 'nation', 'orders', 'part', 'partsupp', 'region', 'supplier','ORDERS']:
+            print(f"  - {table_name}")
+        print("=" * 60)
     
     except FileNotFoundError as e:
         print(f"\n✗ Error: Could not find parquet file")
@@ -86,7 +96,7 @@ def main():
     finally:
         # Clean up
         spark.stop()
-        print("Spark session stopped.\n")
+        print("\nSpark session stopped.\n")
 
 if __name__ == "__main__":
     main()

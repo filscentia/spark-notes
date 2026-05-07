@@ -8,9 +8,6 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
 public final class LoadDataApp {
-    private static final String WAREHOUSE_PATH = "/opt/spark-warehouse";
-    private static final String METASTORE_PATH = "/opt/spark-metastore";
-
     private LoadDataApp() {
     }
 
@@ -61,9 +58,8 @@ public final class LoadDataApp {
 
         SparkSession spark = SparkSession.builder()
                 .appName("TableInfoViewer")
-                .config("spark.sql.warehouse.dir", WAREHOUSE_PATH)
-                .config("javax.jdo.option.ConnectionURL",
-                        "jdbc:derby:;databaseName=" + METASTORE_PATH + "/metastore_db;create=true")
+                .config("spark.sql.catalogImplementation", "hive")
+                .config("hive.metastore.uris", "thrift://hive-metastore:9083")
                 .enableHiveSupport()
                 .getOrCreate();
 
